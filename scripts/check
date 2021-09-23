@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+source "$(dirname "$0")/config"
+
+cargo check $CARGO_ARGS
