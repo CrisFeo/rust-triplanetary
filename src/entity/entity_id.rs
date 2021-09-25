@@ -12,6 +12,16 @@ pub fn new_entity_id(index: u16) -> EntityId {
   EntityId { index }
 }
 
+pub fn index_of_entity_id(entity_id: EntityId) -> u16 {
+  entity_id.index
+}
+
+impl std::fmt::Display for EntityId {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(f, "eid-{}", self.index)
+  }
+}
+
 impl PartialEq for EntityId {
   fn eq(&self, other: &Self) -> bool {
     self.index == other.index

@@ -37,22 +37,20 @@ pub const RIGHT_BOTTOM: Anchor =  Anchor { h: Horizontal::Right,  v: Vertical::B
 
 impl Anchor {
   pub fn window_offset(self) -> IVec2 {
-    let (x, y) = anchor_offset(self, screen_width() as i32, screen_height() as i32);
-    IVec2::new(x, y)
+    self.offset(screen_width() as i32, screen_height() as i32)
+  }
+
+  pub fn offset(self, w: i32, h: i32) -> IVec2 {
+    let x = match self.h {
+      Horizontal::Left   => 0,
+      Horizontal::Middle => w / 2,
+      Horizontal::Right  => w,
+    };
+    let y = match self.v {
+      Vertical::Top   => 0,
+      Vertical::Center => h / 2,
+      Vertical::Bottom  => h,
+    };
+    ivec2(x, y)
   }
 }
-
-pub fn anchor_offset(anchor: Anchor, w: i32, h: i32) -> (i32, i32) {
-  let x = match anchor.h {
-    Horizontal::Left   => 0,
-    Horizontal::Middle => w / 2,
-    Horizontal::Right  => w,
-  };
-  let y = match anchor.v {
-    Vertical::Top   => 0,
-    Vertical::Center => h / 2,
-    Vertical::Bottom  => h,
-  };
-  (x, y)
-}
-

@@ -1,4 +1,4 @@
-export PROJECT_NAME='rust-gl-test'
+export PROJECT_NAME='triplanetary'
 export TARGET='x86_64-pc-windows-gnu'
 export CARGO_ARGS="--target=$TARGET"
 export BINARY="$PROJECT_NAME.exe"

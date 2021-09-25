@@ -326,13 +326,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-gl-test"
-version = "0.1.0"
-dependencies = [
- "macroquad",
-]
-
-[[package]]
 name = "sapp-android"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -400,6 +393,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b97fcaeba89edba30f044a10c6a3cc39df9c3f17d7cd829dd1446cab35f890e0"
 dependencies = [
  "maybe-uninit",
+]
+
+[[package]]
+name = "triplanetary"
+version = "0.1.0"
+dependencies = [
+ "macroquad",
 ]
 
 [[package]]

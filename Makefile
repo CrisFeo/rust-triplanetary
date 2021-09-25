@@ -6,10 +6,10 @@ build:
 run: build
 	./scripts/run
 
-.PHONY: check
-check:
-	./scripts/check
-
 .PHONY: watch
 watch:
 	./scripts/watch
+
+.PHONY: doc
+doc:
+	./scripts/doc

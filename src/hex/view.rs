@@ -2,7 +2,6 @@ use macroquad::math::{
   IVec2,
   ivec2,
 };
-
 use super::hex::{
   Hex,
 };
@@ -19,7 +18,7 @@ pub struct HexView {
 }
 
 impl HexView {
-  pub fn new(layout: HexOrientation, tile_width: i32, tile_height: i32) -> HexView {
+  pub const fn new(layout: HexOrientation, tile_width: i32, tile_height: i32) -> HexView {
     HexView {
       layout,
       tile_width,
