@@ -1,11 +1,11 @@
 use macroquad::prelude::{
-  Color,
   IVec2,
 };
 use crate::anchor::{
   MIDDLE_CENTER,
   Anchor,
 };
+use crate::color::Color;
 use super::sprite::{
   Sprite,
 };

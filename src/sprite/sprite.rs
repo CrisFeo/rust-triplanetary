@@ -1,5 +1,4 @@
 use macroquad::prelude::{
-  Color,
   IVec2,
   Vec2,
   Texture2D,
@@ -13,6 +12,7 @@ use crate::anchor::{
   MIDDLE_CENTER,
   Anchor,
 };
+use crate::color::Color;
 
 pub struct Sprite {
   pub pivot_x: i32,
@@ -36,6 +36,16 @@ impl Sprite {
     }
   }
 
+  fn inside_screen(&self, x: i32, y: i32) -> bool {
+    let screen_width = screen_width() as i32;
+    let screen_height = screen_height() as i32;
+    let within_x_upper = x < screen_width;
+    let within_x_lower = x + self.width as i32 >= 0;
+    let within_y_upper = y < screen_height;
+    let within_y_lower = y + self.height as i32 >= 0;
+    within_x_upper && within_x_lower && within_y_upper && within_y_lower
+  }
+
   pub fn draw(&self, color: Color, p: IVec2) {
     self.draw_with_anchor(color, MIDDLE_CENTER, p);
   }
@@ -48,16 +58,18 @@ impl Sprite {
     };
     let x = screen_position.x + p.x + self.pivot_x;
     let y = screen_position.y + p.y + self.pivot_y;
-    draw_texture_ex(
-      self.texture,
-      x as f32,
-      y as f32,
-      color,
-      DrawTextureParams {
-        dest_size: Some(Vec2::new(self.width, self.height)),
-        source: Some(self.source),
-        ..Default::default()
-      },
-    );
+    if self.inside_screen(x, y) {
+      draw_texture_ex(
+        self.texture,
+        x as f32,
+        y as f32,
+        color,
+        DrawTextureParams {
+          dest_size: Some(Vec2::new(self.width, self.height)),
+          source: Some(self.source),
+          ..Default::default()
+        },
+      );
+    }
   }}
 

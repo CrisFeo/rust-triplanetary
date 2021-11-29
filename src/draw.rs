@@ -1,9 +1,9 @@
 use macroquad::prelude::{
-  Color,
   IVec2,
   draw_line as mq_draw_line,
 };
 use crate::anchor::MIDDLE_CENTER;
+use crate::color::Color;
 
 pub fn draw_line(color: Color, width: i32, a: IVec2 , b: IVec2) {
   let offset = MIDDLE_CENTER.window_offset();

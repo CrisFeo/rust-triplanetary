@@ -4,9 +4,7 @@ use std::collections::{
 };
 use crate::entity::EntityId;
 use crate::hex::Hex;
-use super::components::{
-  Components
-};
+use super::components::Components;
 
 pub struct Positions {
   components: Components<Hex>,
@@ -29,13 +27,13 @@ impl Positions {
     self.components.has(entity_id)
   }
 
-  pub fn get(&self, entity_id: EntityId) -> &Option<Hex> {
+  pub fn get(&self, entity_id: EntityId) -> Option<&Hex> {
     self.components.get(entity_id)
   }
 
   pub fn set(&mut self, entity_id: EntityId, hex: Hex) {
-    if let Some(previous) = *self.components.get(entity_id) {
-      self.by_hex.entry(previous).and_modify(|v| { v.remove(&entity_id); });
+    if let Some(previous) = self.components.get(entity_id) {
+      self.by_hex.entry(*previous).and_modify(|v| { v.remove(&entity_id); });
     }
     self.components.set(entity_id, hex);
     self.by_hex.entry(hex)
@@ -48,8 +46,8 @@ impl Positions {
   }
 
   pub fn del(&mut self, entity_id: EntityId) {
-    if let Some(current) = *self.components.get(entity_id) {
-      self.by_hex.entry(current).and_modify(|v| { v.remove(&entity_id); });
+    if let Some(current) = self.components.get(entity_id) {
+      self.by_hex.entry(*current).and_modify(|v| { v.remove(&entity_id); });
     }
     self.components.del(entity_id);
   }

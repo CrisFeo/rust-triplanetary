@@ -2,16 +2,15 @@
 set -e
 source "$(dirname "$0")/config"
 
-WATCH_COMMAND="
-  lines=\$((\$(tput lines)-2))
-  cargo check        \
-    $CARGO_ARGS      \
-    --color always   \
-    2>&1 | head -n\$lines
-"
-
 watchexec          \
-  --clear          \
+  --restart        \
   --watch src      \
   --exts rs        \
-  "$WATCH_COMMAND"
+  "
+    clear
+    cargo check            \
+      $CARGO_ARGS          \
+      --quiet              \
+      --color always       \
+    2>&1 | less -R -X
+  "

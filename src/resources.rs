@@ -1,6 +1,7 @@
 use macroquad::prelude::{
   FilterMode,
   load_texture,
+  build_textures_atlas,
 };
 use crate::anchor::MIDDLE_BOTTOM;
 use crate::sprite::{
@@ -19,20 +20,41 @@ pub struct Resources {
   pub hex_empty: Sprite,
   pub ship: Sprite,
   pub asteroid: Sprite,
+  pub pip_open: Sprite,
+  pub pip_closed: Sprite,
+  pub gravity_arrow_0: Sprite,
+  pub gravity_arrow_1: Sprite,
+  pub gravity_arrow_2: Sprite,
+  pub gravity_arrow_3: Sprite,
+  pub gravity_arrow_4: Sprite,
+  pub gravity_arrow_5: Sprite,
 }
 
 impl Resources {
   pub async fn load() -> Resources {
-    Resources {
-      hex_empty: create_hex_sprite("data/hex-empty.png", 0, 0).await,
+    let r = Resources {
+      hex_empty: create_hex_sprite("data/hex_empty.png", 0, 0).await,
       ship: create_hex_sprite("data/ship.png", 0, 0).await,
       asteroid: create_hex_sprite("data/asteroid.png", 0, 0).await,
-    }
+      pip_open: create_hex_sprite("data/pip_open.png", 0, 0).await,
+      pip_closed: create_hex_sprite("data/pip_closed.png", 0, 0).await,
+      gravity_arrow_0: create_hex_sprite("data/gravity_arrow_0.png", 0, 0).await,
+      gravity_arrow_1: create_hex_sprite("data/gravity_arrow_1.png", 0, 0).await,
+      gravity_arrow_2: create_hex_sprite("data/gravity_arrow_2.png", 0, 0).await,
+      gravity_arrow_3: create_hex_sprite("data/gravity_arrow_3.png", 0, 0).await,
+      gravity_arrow_4: create_hex_sprite("data/gravity_arrow_4.png", 0, 0).await,
+      gravity_arrow_5: create_hex_sprite("data/gravity_arrow_5.png", 0, 0).await,
+    };
+    build_textures_atlas();
+    r
   }
 }
 
 async fn create_hex_sprite(filename: &str, x: i32, y: i32) -> Sprite {
-  let tex = load_texture(filename).await.unwrap();
+  let tex = match load_texture(filename).await {
+    Ok(x) => x,
+    Err(e) => panic!("error loading sprite {}\n{}", filename, e),
+  };
   tex.set_filter(FilterMode::Nearest);
   let mut sprite = Sprite::new(tex, MIDDLE_BOTTOM, HEX_WIDTH, HEX_HEIGHT, x, y);
   // some tiles are taller however all tiles should be centered from their

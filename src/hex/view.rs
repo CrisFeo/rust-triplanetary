@@ -76,7 +76,7 @@ fn round(q: f32, r: f32) -> Hex {
   let s = -q - r;
   let mut qi = q.round();
   let mut ri = r.round();
-  let mut si = s.round();
+  let si = s.round();
   let qd = (qi - q).abs();
   let rd = (ri - r).abs();
   let sd = (si - s).abs();
@@ -84,8 +84,6 @@ fn round(q: f32, r: f32) -> Hex {
     qi = -ri - si;
   } else if rd > sd {
     ri = -qi - si;
-  } else {
-    si = -qi - ri;
   }
-  Hex::new(qi as i32, ri as i32, si as i32)
+  Hex::new(qi as i32, ri as i32)
 }

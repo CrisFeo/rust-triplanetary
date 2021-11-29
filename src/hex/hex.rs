@@ -8,7 +8,6 @@ use std::ops::{
 pub struct Hex {
   pub q: i32,
   pub r: i32,
-  pub s: i32,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -18,13 +17,15 @@ pub enum Path {
 }
 
 impl Hex {
-
-  pub fn new(q: i32, r: i32, s: i32) -> Hex {
-    Hex { q, r, s }
+  pub fn new(q: i32, r: i32) -> Hex {
+    Hex { q, r }
   }
 
   pub fn len(self) -> i32 {
-    self.q.abs().max(self.r.abs()).max(self.s.abs())
+    let q = self.q;
+    let r = self.r;
+    let s = -q - r;
+    q.abs().max(r.abs()).max(s.abs())
   }
 
   pub fn direction(i: i32) -> Hex {
@@ -55,16 +56,21 @@ impl Hex {
 
   pub fn line(self, other: Hex) -> Vec<Path> {
     use std::f32;
+    const EPSILON: f32 = 0.01;
     let mut results = vec![];
     let n = (self - other).len();
     let step = 1. / (i32::max(n, 1) as f32);
     for i in 0..=n {
       let t = step * (i as f32);
-      let qu = lerp(self.q as f32 + EPSILON, other.q as f32 + EPSILON, t).round();
-      let ru = lerp(self.r as f32 - EPSILON, other.r as f32 - EPSILON, t).round();
+      let sq = self.q as f32;
+      let sr = self.r as f32;
+      let oq = other.q as f32;
+      let or = other.r as f32;
+      let qu = lerp(sq + EPSILON, oq + EPSILON, t).round();
+      let ru = lerp(sr - EPSILON, or - EPSILON, t).round();
       let u = hex(qu as i32, ru as i32);
-      let qv = lerp(self.q as f32 - EPSILON, other.q as f32 - EPSILON, t).round();
-      let rv = lerp(self.r as f32 + EPSILON, other.r as f32 + EPSILON, t).round();
+      let qv = lerp(sq - EPSILON, oq - EPSILON, t).round();
+      let rv = lerp(sr + EPSILON, or + EPSILON, t).round();
       let v = hex(qv as i32, rv as i32);
       if u == v {
         results.push(Path::One(u));
@@ -75,16 +81,31 @@ impl Hex {
     results
   }
 
+  pub fn move_to(self, other: Hex, speed: i32) -> Hex {
+    let path = self.line(other);
+    let remaining = path.len() - 1;
+    let max_step = speed as usize;
+    let step = remaining.min(max_step);
+    match path.get(step) {
+      Some(&Path::One(x)) => x,
+      Some(&Path::Alt(x, y)) => {
+        if x.len() > y.len() {
+          x
+        } else {
+          y
+        }
+      },
+      None => self,
+    }
+  }
 }
-
-const EPSILON : f32 = 1E-6;
 
 fn lerp(a: f32, b: f32, t: f32) -> f32 {
   a + (b - a) * t
 }
 
 pub fn hex(q: i32, r: i32) -> Hex {
-  Hex::new(q, r, -q - r)
+  Hex::new(q, r)
 }
 
 fn add_ring(hex: Hex, radius: i32, results: &mut Vec<Hex>) {
@@ -104,7 +125,6 @@ impl Add for Hex {
     Self {
       q: self.q + other.q,
       r: self.r + other.r,
-      s: self.s + other.s,
     }
   }
 }
@@ -116,7 +136,6 @@ impl Add<i32> for Hex {
     Self {
       q: self.q + other,
       r: self.r + other,
-      s: self.s + other,
     }
   }
 }
@@ -128,7 +147,6 @@ impl Add<Hex> for i32 {
     Hex {
       q: self + other.q,
       r: self + other.r,
-      s: self + other.s,
     }
   }
 }
@@ -140,7 +158,6 @@ impl Sub for Hex {
     Self {
       q: self.q - other.q,
       r: self.r - other.r,
-      s: self.s - other.s,
     }
   }
 }
@@ -152,7 +169,6 @@ impl Sub<i32> for Hex {
     Self {
       q: self.q - other,
       r: self.r - other,
-      s: self.s - other,
     }
   }
 }
@@ -164,7 +180,6 @@ impl Sub<Hex> for i32 {
     Hex {
       q: self - other.q,
       r: self - other.r,
-      s: self - other.s,
     }
   }
 }
@@ -176,7 +191,6 @@ impl Mul for Hex {
     Self {
       q: self.q * other.q,
       r: self.r * other.r,
-      s: self.s * other.s,
     }
   }
 }
@@ -188,7 +202,6 @@ impl Mul<i32> for Hex {
     Self {
       q: self.q * other,
       r: self.r * other,
-      s: self.s * other,
     }
   }
 }
@@ -200,7 +213,6 @@ impl Mul<Hex> for i32 {
     Hex {
       q: self * other.q,
       r: self * other.r,
-      s: self * other.s,
     }
   }
 }
