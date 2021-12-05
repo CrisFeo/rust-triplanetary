@@ -1,4 +1,7 @@
-use std::collections::VecDeque;
+use std::collections::{
+  VecDeque,
+  HashMap,
+};
 use triplanetary::*;
 
 macro_rules! must_return {
@@ -60,13 +63,30 @@ struct Engine {
   thrust_applied: i32,
 }
 
-struct World {
-  seed: u32,
+#[derive(Copy, Clone, Debug)]
+struct Camera {
   center_hex: Hex,
   center_pix: IVec2,
   drag: Option<IVec2>,
+}
+
+impl Camera {
+  pub fn to_screen(&self, hex: Hex) -> IVec2 {
+    HEX_VIEW.to_pixel(hex - self.center_hex) - self.center_pix
+  }
+
+  pub fn to_world(&self, pix: IVec2) -> Hex {
+    HEX_VIEW.from_pixel(pix + self.center_pix) + self.center_hex
+  }
+}
+
+
+struct World {
+  seed: u32,
+  camera: Camera,
   player: Option<EntityId>,
   vision_radius: i32,
+  visibility: HashMap<Hex, (bool, bool)>,
   need_simulate: bool,
   turn: i32,
   entities: EntityTracker,
@@ -83,11 +103,14 @@ impl World {
   fn new() -> Box<Self> {
     Box::new(Self {
       seed: 0,
-      center_hex: hex(0, 0),
-      center_pix: ivec2(0, 0),
-      drag: None,
+      camera: Camera {
+        center_hex: hex(0, 0),
+        center_pix: ivec2(0, 0),
+        drag: None,
+      },
       player: None,
       vision_radius: 50,
+      visibility: HashMap::new(),
       need_simulate: false,
       turn: 1,
       entities: EntityTracker::new(),
@@ -131,19 +154,20 @@ fn generate_object(seed: u32, position: Hex) -> Option<VisibleObject> {
   Some(VisibleObject(ObjectType::Asteroid, c))
 }
 
-fn input_mouse_pan_system(mut ctx: &mut Context) {
-  if let Some(start) = ctx.world.drag {
-    ctx.world.center_pix = start - ctx.cursor_screen;
+fn input_mouse_pan_system(ctx: &mut Context) {
+  let camera = &mut ctx.world.camera;
+  if let Some(start) = camera.drag {
+    camera.center_pix = start - ctx.cursor_screen;
     if is_mouse_button_released(MouseButton::Right) {
-      let offset_hex = HEX_VIEW.from_pixel(ctx.world.center_pix);
+      let offset_hex = HEX_VIEW.from_pixel(camera.center_pix);
       let offset_pix = HEX_VIEW.to_pixel(offset_hex);
-      ctx.world.center_hex = ctx.world.center_hex + offset_hex;
-      ctx.world.center_pix = ctx.world.center_pix - offset_pix;
-      ctx.world.drag = None;
+      camera.center_hex = camera.center_hex + offset_hex;
+      camera.center_pix = camera.center_pix - offset_pix;
+      camera.drag = None;
     }
   } else {
     if is_mouse_button_pressed(MouseButton::Right) {
-      ctx.world.drag = Some(ctx.cursor_screen + ctx.world.center_pix);
+      camera.drag = Some(ctx.cursor_screen + camera.center_pix);
     }
   }
 }
@@ -288,8 +312,8 @@ fn simulate_generate_around_player_system(ctx: &mut Context) {
     None => return,
   };
   let previous = match ctx.world.history.get(player_entity_id) {
-    Some(h) => h.get(h.len() - 2).map(|x| x.position),
-    None => None,
+    Some(h) if h.len() > 1 => h.get(h.len() - 2).map(|x| x.position),
+    _ => None,
   };
   if let Some(previous) = previous {
     if current == previous {
@@ -320,6 +344,30 @@ fn simulate_generate_around_player_system(ctx: &mut Context) {
   }
 }
 
+fn simulate_vision_system(ctx: &mut Context) {
+  let player_entity_id = must_return!(ctx.world.player);
+  let origin = *must_return!(ctx.world.position.get(player_entity_id));
+  let visibility = &mut ctx.world.visibility;
+  visibility.clear();
+  visibility.insert(origin, (true, false));
+  for position in origin.spiral(ctx.world.vision_radius) {
+    let is_visible_through = |position| {
+      let (visible, obstructed) = *visibility.get(&position).unwrap();
+      visible && !obstructed
+    };
+    let visible = match position.line(origin).get(1) {
+      Some(&Path::One(a)) => is_visible_through(a),
+      Some(&Path::Alt(a, b)) => is_visible_through(a) && is_visible_through(b),
+      None => true,
+    };
+    let obstructed = match ctx.world.position.at(position) {
+      Some(x) => x.len() > 0,
+      None => false,
+    };
+    visibility.insert(position, (visible, obstructed));
+  }
+}
+
 fn simulate_step_system(mut ctx: &mut Context) {
   if !ctx.world.need_simulate {
     return;
@@ -338,24 +386,25 @@ fn draw_background_hex_grid_system(ctx: &Context) {
     Some(player_entity_id) => ctx.world.position.get(player_entity_id),
     None => None,
   };
-  let center_hex = screen_to_world(ctx, ivec2(0, 0));
+  let center_hex = ctx.world.camera.to_world(ivec2(0, 0));
   for y in -yn..=yn {
     for x in -xn..=xn {
       let p = x;
       let q = y - (x - (x&1)) / 2;
       let world_hex = center_hex + hex(p, q);
-      let color = match player_hex {
-        Some(&player_hex) => {
-          if (world_hex - player_hex).len() > ctx.world.vision_radius {
-            continue
-          } else {
-            DARK_GRAY
-          }
-        },
-        None => continue,
-      };
-      let position = world_to_screen(ctx, world_hex);
-      ctx.resources.hex_empty.draw(color, position);
+      if let Some(player_hex) = player_hex {
+        if (world_hex - *player_hex).len() > ctx.world.vision_radius {
+          continue;
+        }
+      }
+      if let Some((visible, _)) = ctx.world.visibility.get(&world_hex) {
+        if !*visible {
+          continue;
+        }
+      }
+      let color = Color::new(0.1, 0.1, 0.2, 1.);
+      let position = ctx.world.camera.to_screen(world_hex);
+      ctx.resources.hex_filled.draw(color, position);
     }
   }
 }
@@ -365,7 +414,7 @@ fn draw_visible_objects_system(ctx: &Context) {
     let position = *must_continue!(ctx.world.position.get(entity_id));
     let visible_object = *must_continue!(ctx.world.visible_object.get(entity_id));
     let VisibleObject(object_type, color) = visible_object;
-    let position = world_to_screen(ctx, position);
+    let position = ctx.world.camera.to_screen(position);
     let sprite = match object_type {
       ObjectType::Ship => &ctx.resources.ship,
       ObjectType::Asteroid => &ctx.resources.asteroid,
@@ -388,8 +437,8 @@ fn draw_history_trail_system(ctx: &Context) {
     for j in 1..history.len() {
       let event_a = history[j - 1];
       let event_b = history[j];
-      let a = world_to_screen(ctx, event_a.position);
-      let b = world_to_screen(ctx, event_b.position);
+      let a = ctx.world.camera.to_screen(event_a.position);
+      let b = ctx.world.camera.to_screen(event_b.position);
       draw_line(color, 2, a, b);
       let pip = if event_a.thrust_applied > 0 {
         &ctx.resources.pip_closed
@@ -401,8 +450,8 @@ fn draw_history_trail_system(ctx: &Context) {
     let position = *must_continue!(ctx.world.position.get(entity_id));
     let velocity = *must_continue!(ctx.world.velocity.get(entity_id));
     let next_position = position + velocity;
-    let a = world_to_screen(ctx, position);
-    let b = world_to_screen(ctx, next_position);
+    let a = ctx.world.camera.to_screen(position);
+    let b = ctx.world.camera.to_screen(next_position);
     draw_line(color, 3, a, b);
   }
 }
@@ -414,17 +463,9 @@ fn draw_player_thrust_destination_system(ctx: &Context) {
   let engine = *must_return!(ctx.world.engine.get(player_entity_id));
   let next_position = position + velocity;
   for neighbor in next_position.spiral(engine.power) {
-    let screen_position = world_to_screen(ctx, neighbor);
+    let screen_position = ctx.world.camera.to_screen(neighbor);
     ctx.resources.hex_empty.draw(DARK_YELLOW, screen_position);
   }
-}
-
-fn world_to_screen(ctx: &Context, hex: Hex) -> IVec2 {
-  HEX_VIEW.to_pixel(hex - ctx.world.center_hex) - ctx.world.center_pix
-}
-
-fn screen_to_world(ctx: &Context, pix: IVec2) -> Hex {
-  HEX_VIEW.from_pixel(pix + ctx.world.center_pix) + ctx.world.center_hex
 }
 
 fn draw_player_to_cursor_hexes_system(ctx: &Context) {
@@ -434,19 +475,19 @@ fn draw_player_to_cursor_hexes_system(ctx: &Context) {
     for step in player_hex.line(ctx.cursor_world) {
       match step {
         Path::One(a) => {
-          let a = world_to_screen(ctx, a);
+          let a = ctx.world.camera.to_screen(a);
           ctx.resources.hex_empty.draw(color, a);
         },
         Path::Alt(a, b) => {
-          let a = world_to_screen(ctx, a);
-          let b = world_to_screen(ctx, b);
+          let a = ctx.world.camera.to_screen(a);
+          let b = ctx.world.camera.to_screen(b);
           ctx.resources.hex_empty.draw(color, a);
           ctx.resources.hex_empty.draw(color, b);
         },
       }
     }
   } else {
-    let cursor_pix = world_to_screen(ctx, ctx.cursor_world);
+    let cursor_pix = ctx.world.camera.to_screen(ctx.cursor_world);
     ctx.resources.hex_empty.draw(color, cursor_pix);
   }
 }
@@ -517,16 +558,8 @@ fn initialize(ctx: &mut Context) {
     add_gravity(4);
     add_gravity(5);
   }
-  {
-    for position in player_starting_position.spiral(world.vision_radius) {
-      let result = generate_object(world.seed, position);
-      if let Some(visible_object) = result {
-        let entity_id = world.entities.create();
-        world.position.set(entity_id, position);
-        world.visible_object.set(entity_id, visible_object);
-      }
-    }
-  }
+  simulate_generate_around_player_system(ctx);
+  simulate_vision_system(ctx);
 }
 
 fn tick_event(mut ctx: &mut Context) {
@@ -547,6 +580,7 @@ fn simulate_event(mut ctx: &mut Context) {
   simulate_nav_system(&mut ctx);
   simulate_movement_system(&mut ctx);
   simulate_generate_around_player_system(&mut ctx);
+  simulate_vision_system(&mut ctx);
 }
 
 fn simulate_collision_event(ctx: &mut Context, a: EntityId, b: EntityId) {
@@ -614,7 +648,7 @@ async fn main() {
       let (x, y) = mouse_position();
       ivec2(x as i32, y as i32) - MIDDLE_CENTER.window_offset()
     };
-    ctx.cursor_world = screen_to_world(&ctx, ctx.cursor_screen);
+    ctx.cursor_world = ctx.world.camera.to_world(ctx.cursor_screen);
     clear_background(BLACK);
     tick_event(&mut ctx);
     macroquad::text::draw_text(

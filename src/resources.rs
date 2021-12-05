@@ -18,6 +18,7 @@ pub const HEX_VIEW: HexView = HexView::new(HexOrientation::Flat, HEX_WIDTH, HEX_
 
 pub struct Resources {
   pub hex_empty: Sprite,
+  pub hex_filled: Sprite,
   pub ship: Sprite,
   pub asteroid: Sprite,
   pub pip_open: Sprite,
@@ -34,6 +35,7 @@ impl Resources {
   pub async fn load() -> Resources {
     let r = Resources {
       hex_empty: create_hex_sprite("data/hex_empty.png", 0, 0).await,
+      hex_filled: create_hex_sprite("data/hex_filled.png", 0, 0).await,
       ship: create_hex_sprite("data/ship.png", 0, 0).await,
       asteroid: create_hex_sprite("data/asteroid.png", 0, 0).await,
       pip_open: create_hex_sprite("data/pip_open.png", 0, 0).await,
