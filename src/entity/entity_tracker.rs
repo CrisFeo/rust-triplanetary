@@ -10,19 +10,13 @@ use super::entity_id::{
 pub const ENTITY_MAX: usize = 8192;
 pub const REUSE_SIZE: usize = 100;
 
+#[derive(Default)]
 pub struct EntityTracker {
   next_index: u16,
   unused_indices: VecDeque<u16>,
 }
 
 impl EntityTracker {
-  pub fn new() -> Self {
-    EntityTracker {
-      next_index: 0,
-      unused_indices: VecDeque::new(),
-    }
-  }
-
   pub fn create(&mut self) -> EntityId {
     let index = {
       if self.unused_indices.len() > REUSE_SIZE {

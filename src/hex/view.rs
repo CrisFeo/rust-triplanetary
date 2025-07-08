@@ -2,9 +2,7 @@ use macroquad::math::{
   IVec2,
   ivec2,
 };
-use super::hex::{
-  Hex,
-};
+use super::Hex;
 
 pub enum HexOrientation {
   Flat,

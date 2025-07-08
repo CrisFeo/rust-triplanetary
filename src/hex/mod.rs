@@ -1,5 +1,5 @@
-mod hex;
-pub use hex::{
+mod grid;
+pub use grid::{
   Path,
   Hex,
   hex,

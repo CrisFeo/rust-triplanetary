@@ -3,7 +3,7 @@ use core::ops::{
   IndexMut,
 };
 
-#[derive(Copy, Clone, Debug, Hash)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq)]
 pub struct EntityId {
   index: u16,
 }
@@ -19,12 +19,6 @@ pub fn index_of_entity_id(entity_id: EntityId) -> u16 {
 impl std::fmt::Display for EntityId {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     write!(f, "eid-{}", self.index)
-  }
-}
-
-impl PartialEq for EntityId {
-  fn eq(&self, other: &Self) -> bool {
-    self.index == other.index
   }
 }
 

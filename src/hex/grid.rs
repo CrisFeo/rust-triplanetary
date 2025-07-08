@@ -21,7 +21,7 @@ impl Hex {
     Hex { q, r }
   }
 
-  pub fn len(self) -> i32 {
+  pub fn mag(self) -> i32 {
     let q = self.q;
     let r = self.r;
     let s = -q - r;
@@ -58,7 +58,7 @@ impl Hex {
     use std::f32;
     const EPSILON: f32 = 0.01;
     let mut results = vec![];
-    let n = (self - other).len();
+    let n = (self - other).mag();
     let step = 1. / (i32::max(n, 1) as f32);
     for i in 0..=n {
       let t = step * (i as f32);
@@ -89,7 +89,7 @@ impl Hex {
     match path.get(step) {
       Some(&Path::One(x)) => x,
       Some(&Path::Alt(x, y)) => {
-        if x.len() > y.len() {
+        if x.mag() > y.mag() {
           x
         } else {
           y

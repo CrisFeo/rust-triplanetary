@@ -6,19 +6,13 @@ use crate::entity::EntityId;
 use crate::hex::Hex;
 use super::components::Components;
 
+#[derive(Default)]
 pub struct Positions {
   components: Components<Hex>,
   by_hex: HashMap<Hex, HashSet<EntityId>>,
 }
 
 impl Positions {
-  pub fn new() -> Self {
-    Positions {
-      components: Components::new(),
-      by_hex: HashMap::new(),
-    }
-  }
-
   pub fn at(&self, hex: Hex) -> Option<&HashSet<EntityId>> {
     self.by_hex.get(&hex)
   }

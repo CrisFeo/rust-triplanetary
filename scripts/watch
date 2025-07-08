@@ -1,16 +1,11 @@
-#!/bin/bash
-set -e
+#!/bin/sh
+set -euf
 source "$(dirname "$0")/config"
 
-watchexec          \
-  --restart        \
-  --watch src      \
-  --exts rs        \
-  "
-    clear
-    cargo check            \
-      $CARGO_ARGS          \
-      --quiet              \
-      --color always       \
-    2>&1 | less -R -X
-  "
+while :; do
+  output="$(./scripts/check 2>&1 || :)"
+  clear
+  echo '===================='
+  echo "$output"
+  sleep 1
+done

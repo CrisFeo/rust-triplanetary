@@ -5,14 +5,15 @@ pub struct Components<T> {
   by_id: HashMap<EntityId, T>,
 }
 
-impl<T> Components<T>{
-
-  pub fn new() -> Self {
-    Components {
+impl<T> Default for Components<T> {
+  fn default() -> Self {
+    Self {
       by_id: HashMap::new(),
     }
   }
+}
 
+impl<T> Components<T>{
   pub fn has(&self, entity_id: EntityId) -> bool {
     self.by_id.contains_key(&entity_id)
   }

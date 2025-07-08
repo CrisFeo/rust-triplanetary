@@ -77,8 +77,7 @@ pub fn perlin(seed: u32, x: f32, y: f32) -> f32 {
   let x1y1 = 0.0625 * (n09 + n16 + n28 + n34) + 0.125 * (n08 + n14 + n06 + n24) + 0.25 * (n04);
   let v1 = lerp(x0y0, x1y0, x_frac);
   let v2 = lerp(x0y1, x1y1, x_frac);
-  let v3 = lerp(v1, v2, y_frac) as f32;
-  v3
+  lerp(v1, v2, y_frac)
 }
 
 pub fn fbm(octaves: i32, lacunarity: f32, gain: f32, seed: u32, x: f32, y: f32) -> f32 {

@@ -37,7 +37,7 @@ enum ObjectType {
 
 impl std::fmt::Display for ObjectType {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    write!(f, "{:?}", self)
+    write!(f, "{self:?}")
   }
 }
 
@@ -71,11 +71,11 @@ struct Camera {
 }
 
 impl Camera {
-  pub fn to_screen(&self, hex: Hex) -> IVec2 {
+  pub fn screen_coords(&self, hex: Hex) -> IVec2 {
     HEX_VIEW.to_pixel(hex - self.center_hex) - self.center_pix
   }
 
-  pub fn to_world(&self, pix: IVec2) -> Hex {
+  pub fn world_coords(&self, pix: IVec2) -> Hex {
     HEX_VIEW.from_pixel(pix + self.center_pix) + self.center_hex
   }
 }
@@ -113,14 +113,14 @@ impl World {
       visibility: HashMap::new(),
       need_simulate: false,
       turn: 1,
-      entities: EntityTracker::new(),
-      name: Components::new(),
-      position: Positions::new(),
-      velocity: Components::new(),
-      history: Components::new(),
-      engine: Components::new(),
-      visible_object: Components::new(),
-      nav: Components::new(),
+      entities: EntityTracker::default(),
+      name: Components::default(),
+      position: Positions::default(),
+      velocity: Components::default(),
+      history: Components::default(),
+      engine: Components::default(),
+      visible_object: Components::default(),
+      nav: Components::default(),
     })
   }
 
@@ -138,7 +138,7 @@ impl World {
 
 fn generate_object(seed: u32, position: Hex) -> Option<VisibleObject> {
   let seed = hash2_u32(seed, 4331);
-  if (position - hex(0, 0)).len() < 4 {
+  if (position - hex(0, 0)).mag() < 4 {
     return None;
   }
   let scale = 100.;
@@ -162,24 +162,22 @@ fn input_mouse_pan_system(ctx: &mut Context) {
       let offset_hex = HEX_VIEW.from_pixel(camera.center_pix);
       let offset_pix = HEX_VIEW.to_pixel(offset_hex);
       camera.center_hex = camera.center_hex + offset_hex;
-      camera.center_pix = camera.center_pix - offset_pix;
+      camera.center_pix -= offset_pix;
       camera.drag = None;
     }
-  } else {
-    if is_mouse_button_pressed(MouseButton::Right) {
-      camera.drag = Some(ctx.cursor_screen + camera.center_pix);
-    }
+  } else if is_mouse_button_pressed(MouseButton::Right) {
+    camera.drag = Some(ctx.cursor_screen + camera.center_pix);
   }
 }
 
-fn input_player_thrust_system(mut ctx: &mut Context) {
+fn input_player_thrust_system(ctx: &mut Context) {
   if is_mouse_button_released(MouseButton::Left) {
     let player_entity_id = must_return!(ctx.world.player);
     let position = *must_return!(ctx.world.position.get(player_entity_id));
     let velocity = *must_return!(ctx.world.velocity.get(player_entity_id));
     let mut engine = *must_return!(ctx.world.engine.get(player_entity_id));
     let next_position = position + velocity;
-    let desired_thrust = (ctx.cursor_world - next_position).len();
+    let desired_thrust = (ctx.cursor_world - next_position).mag();
     if desired_thrust > engine.power {
       return;
     }
@@ -207,7 +205,7 @@ fn simulate_nav_system(ctx: &mut Context) {
       },
       Nav::GoTo(target_position) => {
         let target_vector = target_position - position;
-        let target_length = target_vector.len() as f32;
+        let target_length = target_vector.mag() as f32;
         let desired_speed = target_length.sqrt().floor() as usize;
         match hex(0, 0).line(target_vector).get(desired_speed) {
           Some(&Path::One(x)) => x,
@@ -234,14 +232,14 @@ fn simulate_nav_system(ctx: &mut Context) {
     };
     let new_velocity = velocity.move_to(desired_velocity, engine.power);
     ctx.world.engine.set(entity_id, {
-      engine.thrust_applied = (new_velocity - velocity).len();
+      engine.thrust_applied = (new_velocity - velocity).mag();
       engine
     });
     ctx.world.velocity.set(entity_id, new_velocity);
   }
 }
 
-fn simulate_movement_system(mut ctx: &mut Context) {
+fn simulate_movement_system(ctx: &mut Context) {
   for entity_id in ctx.world.entities.all() {
     let start_position = *must_continue!(ctx.world.position.get(entity_id));
     let velocity = *must_continue!(ctx.world.velocity.get(entity_id));
@@ -257,7 +255,7 @@ fn simulate_movement_system(mut ctx: &mut Context) {
             None => continue,
           };
           for other in entities_at.to_owned().iter() {
-            simulate_collision_event(&mut ctx, entity_id, *other);
+            simulate_collision_event(ctx, entity_id, *other);
           }
         },
         Path::Alt(a, b) => {
@@ -265,14 +263,14 @@ fn simulate_movement_system(mut ctx: &mut Context) {
             Some(x) => x,
             None => continue,
           };
-          if entities_at.len() > 0 {
+          if !entities_at.is_empty() {
             entities_at = match ctx.world.position.at(b) {
               Some(x) => x,
               None => continue,
             }
           }
           for other in entities_at.to_owned().iter() {
-            simulate_collision_event(&mut ctx, entity_id, *other);
+            simulate_collision_event(ctx, entity_id, *other);
           }
         },
       }
@@ -305,7 +303,7 @@ fn simulate_movement_system(mut ctx: &mut Context) {
 fn simulate_generate_around_player_system(ctx: &mut Context) {
   let player_entity_id = must_return!(ctx.world.player);
   let current = match ctx.world.history.get(player_entity_id) {
-    Some(h) => match h.get(h.len() - 1) {
+    Some(h) => match h.back() {
       Some(x) => x.position,
       None => return,
     },
@@ -320,7 +318,7 @@ fn simulate_generate_around_player_system(ctx: &mut Context) {
       return;
     }
     for position in previous.spiral(ctx.world.vision_radius) {
-      if (position - current).len() <= ctx.world.vision_radius {
+      if (position - current).mag() <= ctx.world.vision_radius {
         continue;
       }
       let entities_at = must_continue!(ctx.world.position.at(position));
@@ -331,7 +329,7 @@ fn simulate_generate_around_player_system(ctx: &mut Context) {
   }
   for position in current.spiral(ctx.world.vision_radius) {
     if let Some(previous) = previous {
-      if (position - previous).len() <= ctx.world.vision_radius {
+      if (position - previous).mag() <= ctx.world.vision_radius {
         continue;
       }
     }
@@ -361,18 +359,18 @@ fn simulate_vision_system(ctx: &mut Context) {
       None => true,
     };
     let obstructed = match ctx.world.position.at(position) {
-      Some(x) => x.len() > 0,
+      Some(x) => !x.is_empty(),
       None => false,
     };
     visibility.insert(position, (visible, obstructed));
   }
 }
 
-fn simulate_step_system(mut ctx: &mut Context) {
+fn simulate_step_system(ctx: &mut Context) {
   if !ctx.world.need_simulate {
     return;
   }
-  simulate_event(&mut ctx);
+  simulate_event(ctx);
   ctx.world.need_simulate = false;
   ctx.world.turn += 1;
 }
@@ -386,14 +384,14 @@ fn draw_background_hex_grid_system(ctx: &Context) {
     Some(player_entity_id) => ctx.world.position.get(player_entity_id),
     None => None,
   };
-  let center_hex = ctx.world.camera.to_world(ivec2(0, 0));
+  let center_hex = ctx.world.camera.world_coords(ivec2(0, 0));
   for y in -yn..=yn {
     for x in -xn..=xn {
       let p = x;
       let q = y - (x - (x&1)) / 2;
       let world_hex = center_hex + hex(p, q);
       if let Some(player_hex) = player_hex {
-        if (world_hex - *player_hex).len() > ctx.world.vision_radius {
+        if (world_hex - *player_hex).mag() > ctx.world.vision_radius {
           continue;
         }
       }
@@ -403,7 +401,7 @@ fn draw_background_hex_grid_system(ctx: &Context) {
         }
       }
       let color = Color::new(0.1, 0.1, 0.2, 1.);
-      let position = ctx.world.camera.to_screen(world_hex);
+      let position = ctx.world.camera.screen_coords(world_hex);
       ctx.resources.hex_filled.draw(color, position);
     }
   }
@@ -414,7 +412,7 @@ fn draw_visible_objects_system(ctx: &Context) {
     let position = *must_continue!(ctx.world.position.get(entity_id));
     let visible_object = *must_continue!(ctx.world.visible_object.get(entity_id));
     let VisibleObject(object_type, color) = visible_object;
-    let position = ctx.world.camera.to_screen(position);
+    let position = ctx.world.camera.screen_coords(position);
     let sprite = match object_type {
       ObjectType::Ship => &ctx.resources.ship,
       ObjectType::Asteroid => &ctx.resources.asteroid,
@@ -437,8 +435,8 @@ fn draw_history_trail_system(ctx: &Context) {
     for j in 1..history.len() {
       let event_a = history[j - 1];
       let event_b = history[j];
-      let a = ctx.world.camera.to_screen(event_a.position);
-      let b = ctx.world.camera.to_screen(event_b.position);
+      let a = ctx.world.camera.screen_coords(event_a.position);
+      let b = ctx.world.camera.screen_coords(event_b.position);
       draw_line(color, 2, a, b);
       let pip = if event_a.thrust_applied > 0 {
         &ctx.resources.pip_closed
@@ -450,8 +448,8 @@ fn draw_history_trail_system(ctx: &Context) {
     let position = *must_continue!(ctx.world.position.get(entity_id));
     let velocity = *must_continue!(ctx.world.velocity.get(entity_id));
     let next_position = position + velocity;
-    let a = ctx.world.camera.to_screen(position);
-    let b = ctx.world.camera.to_screen(next_position);
+    let a = ctx.world.camera.screen_coords(position);
+    let b = ctx.world.camera.screen_coords(next_position);
     draw_line(color, 3, a, b);
   }
 }
@@ -463,7 +461,7 @@ fn draw_player_thrust_destination_system(ctx: &Context) {
   let engine = *must_return!(ctx.world.engine.get(player_entity_id));
   let next_position = position + velocity;
   for neighbor in next_position.spiral(engine.power) {
-    let screen_position = ctx.world.camera.to_screen(neighbor);
+    let screen_position = ctx.world.camera.screen_coords(neighbor);
     ctx.resources.hex_empty.draw(DARK_YELLOW, screen_position);
   }
 }
@@ -475,19 +473,19 @@ fn draw_player_to_cursor_hexes_system(ctx: &Context) {
     for step in player_hex.line(ctx.cursor_world) {
       match step {
         Path::One(a) => {
-          let a = ctx.world.camera.to_screen(a);
+          let a = ctx.world.camera.screen_coords(a);
           ctx.resources.hex_empty.draw(color, a);
         },
         Path::Alt(a, b) => {
-          let a = ctx.world.camera.to_screen(a);
-          let b = ctx.world.camera.to_screen(b);
+          let a = ctx.world.camera.screen_coords(a);
+          let b = ctx.world.camera.screen_coords(b);
           ctx.resources.hex_empty.draw(color, a);
           ctx.resources.hex_empty.draw(color, b);
         },
       }
     }
   } else {
-    let cursor_pix = ctx.world.camera.to_screen(ctx.cursor_world);
+    let cursor_pix = ctx.world.camera.screen_coords(ctx.cursor_world);
     ctx.resources.hex_empty.draw(color, cursor_pix);
   }
 }
@@ -500,7 +498,7 @@ struct Context {
 }
 
 fn initialize(ctx: &mut Context) {
-  let mut world = &mut ctx.world;
+  let world = &mut ctx.world;
   //world.seed = macroquad::rand::rand();
   world.seed = 12;
   let player_entity_id = world.entities.create();
@@ -508,7 +506,7 @@ fn initialize(ctx: &mut Context) {
   fn new_history(position: Hex) -> VecDeque<HistoryEvent> {
     vec![
       HistoryEvent {
-        position: position,
+        position,
         thrust_applied: 0,
       }
     ].into_iter().collect()
@@ -562,25 +560,25 @@ fn initialize(ctx: &mut Context) {
   simulate_vision_system(ctx);
 }
 
-fn tick_event(mut ctx: &mut Context) {
+fn tick_event(ctx: &mut Context) {
   // input systems
-  input_mouse_pan_system(&mut ctx);
-  input_player_thrust_system(&mut ctx);
+  input_mouse_pan_system(ctx);
+  input_player_thrust_system(ctx);
   // simulation systems
-  simulate_step_system(&mut ctx);
+  simulate_step_system(ctx);
   // Drawing systems
-  draw_background_hex_grid_system(&mut ctx);
-  draw_history_trail_system(&mut ctx);
-  draw_visible_objects_system(&mut ctx);
-  draw_player_thrust_destination_system(&mut ctx);
-  draw_player_to_cursor_hexes_system(&mut ctx);
+  draw_background_hex_grid_system(ctx);
+  draw_history_trail_system(ctx);
+  draw_visible_objects_system(ctx);
+  draw_player_thrust_destination_system(ctx);
+  draw_player_to_cursor_hexes_system(ctx);
 }
 
-fn simulate_event(mut ctx: &mut Context) {
-  simulate_nav_system(&mut ctx);
-  simulate_movement_system(&mut ctx);
-  simulate_generate_around_player_system(&mut ctx);
-  simulate_vision_system(&mut ctx);
+fn simulate_event(ctx: &mut Context) {
+  simulate_nav_system(ctx);
+  simulate_movement_system(ctx);
+  simulate_generate_around_player_system(ctx);
+  simulate_vision_system(ctx);
 }
 
 fn simulate_collision_event(ctx: &mut Context, a: EntityId, b: EntityId) {
@@ -602,22 +600,22 @@ fn simulate_collision_event(ctx: &mut Context, a: EntityId, b: EntityId) {
 
 fn simulate_collision_asteroid(ctx: &mut Context, entity_id: EntityId) {
   match ctx.world.name.get(entity_id) {
-    Some(x) => println!("{} collided with an asteroid", x),
-    None => println!("{} collided with an asteroid", entity_id.to_string()),
+    Some(x) => println!("{x} collided with an asteroid"),
+    None => println!("{entity_id} collided with an asteroid"),
   };
 }
 
 fn simulate_collision_ship(ctx: &mut Context, entity_id: EntityId) {
   match ctx.world.name.get(entity_id) {
-    Some(x) => println!("{} collided with a ship", x),
-    None => println!("{} collided with a ship", entity_id.to_string()),
+    Some(x) => println!("{x} collided with a ship"),
+    None => println!("{entity_id} collided with a ship"),
   };
 }
 
 fn simulate_collision_gravity(ctx: &mut Context, direction: i32, entity_id: EntityId) {
   match ctx.world.name.get(entity_id) {
-    Some(x) => println!("{} passed through gravity well", x),
-    None => println!("{} passed through gravity well", entity_id.to_string()),
+    Some(x) => println!("{x} passed through gravity well"),
+    None => println!("{entity_id} passed through gravity well"),
   };
   let velocity = match ctx.world.velocity.get(entity_id) {
     Some(x) => *x,
@@ -648,7 +646,7 @@ async fn main() {
       let (x, y) = mouse_position();
       ivec2(x as i32, y as i32) - MIDDLE_CENTER.window_offset()
     };
-    ctx.cursor_world = ctx.world.camera.to_world(ctx.cursor_screen);
+    ctx.cursor_world = ctx.world.camera.world_coords(ctx.cursor_screen);
     clear_background(BLACK);
     tick_event(&mut ctx);
     macroquad::text::draw_text(
