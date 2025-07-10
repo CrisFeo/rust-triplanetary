@@ -60,7 +60,7 @@ impl Sprite {
     let y = screen_position.y + p.y + self.pivot_y;
     if self.inside_screen(x, y) {
       draw_texture_ex(
-        self.texture,
+        &self.texture,
         x as f32,
         y as f32,
         color,

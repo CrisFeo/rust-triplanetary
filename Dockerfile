@@ -18,12 +18,12 @@ RUN apk add --no-cache \
   less                 \
   openssh              \
   git                  \
-  rustup               \
   build-base           \
-  mingw-w64-gcc
+  rustup
 
 USER $USER
 
 RUN /usr/bin/rustup-init -y
 RUN echo '. $HOME/.cargo/env' > $HOME/.bashrc
-RUN $HOME/.cargo/bin/rustup target add x86_64-pc-windows-gnu
+RUN $HOME/.cargo/bin/cargo install --no-default-features simple-http-server
+RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown

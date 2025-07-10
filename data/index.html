@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Triplanetary</title>
+  <style>
+    html, body, canvas {
+      background: black;
+      height: 100vh;
+      margin: 0px;
+      overflow: hidden;
+      padding: 0px;
+      position: absolute;
+      width: 100vw;
+      z-index: 0;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="glcanvas" tabindex='1' oncontextmenu='return false;'></canvas>
+  <script src="mq.js"></script>
+  <script>load("triplanetary.wasm");</script>
+</body>
+</html>
+

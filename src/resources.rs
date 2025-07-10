@@ -34,18 +34,18 @@ pub struct Resources {
 impl Resources {
   pub async fn load() -> Resources {
     let r = Resources {
-      hex_empty: create_hex_sprite("data/hex_empty.png", 0, 0).await,
-      hex_filled: create_hex_sprite("data/hex_filled.png", 0, 0).await,
-      ship: create_hex_sprite("data/ship.png", 0, 0).await,
-      asteroid: create_hex_sprite("data/asteroid.png", 0, 0).await,
-      pip_open: create_hex_sprite("data/pip_open.png", 0, 0).await,
-      pip_closed: create_hex_sprite("data/pip_closed.png", 0, 0).await,
-      gravity_arrow_0: create_hex_sprite("data/gravity_arrow_0.png", 0, 0).await,
-      gravity_arrow_1: create_hex_sprite("data/gravity_arrow_1.png", 0, 0).await,
-      gravity_arrow_2: create_hex_sprite("data/gravity_arrow_2.png", 0, 0).await,
-      gravity_arrow_3: create_hex_sprite("data/gravity_arrow_3.png", 0, 0).await,
-      gravity_arrow_4: create_hex_sprite("data/gravity_arrow_4.png", 0, 0).await,
-      gravity_arrow_5: create_hex_sprite("data/gravity_arrow_5.png", 0, 0).await,
+      hex_empty: create_hex_sprite("hex_empty.png", 0, 0).await,
+      hex_filled: create_hex_sprite("hex_filled.png", 0, 0).await,
+      ship: create_hex_sprite("ship.png", 0, 0).await,
+      asteroid: create_hex_sprite("asteroid.png", 0, 0).await,
+      pip_open: create_hex_sprite("pip_open.png", 0, 0).await,
+      pip_closed: create_hex_sprite("pip_closed.png", 0, 0).await,
+      gravity_arrow_0: create_hex_sprite("gravity_arrow_0.png", 0, 0).await,
+      gravity_arrow_1: create_hex_sprite("gravity_arrow_1.png", 0, 0).await,
+      gravity_arrow_2: create_hex_sprite("gravity_arrow_2.png", 0, 0).await,
+      gravity_arrow_3: create_hex_sprite("gravity_arrow_3.png", 0, 0).await,
+      gravity_arrow_4: create_hex_sprite("gravity_arrow_4.png", 0, 0).await,
+      gravity_arrow_5: create_hex_sprite("gravity_arrow_5.png", 0, 0).await,
     };
     build_textures_atlas();
     r

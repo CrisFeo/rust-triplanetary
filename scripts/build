@@ -3,3 +3,5 @@ set -euf
 source "$(dirname "$0")/config"
 
 cargo build $CARGO_ARGS
+
+cp "./target/$TARGET/debug/$PROJECT_NAME.wasm" ./data/

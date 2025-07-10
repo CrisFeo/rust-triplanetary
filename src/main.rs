@@ -22,6 +22,14 @@ macro_rules! must_continue {
   };
 }
 
+macro_rules! instrument {
+  ($ctx:expr, $x:expr) => {
+    let handle = $ctx.counters.begin(stringify!($x));
+    $x;
+    $ctx.counters.end(handle);
+  };
+}
+
 #[derive(Copy, Clone, Debug)]
 enum ObjectType {
   Ship,
@@ -142,7 +150,7 @@ fn generate_object(seed: u32, position: Hex) -> Option<VisibleObject> {
     return None;
   }
   let scale = 100.;
-  let p = HEX_VIEW.to_pixel(position).as_f32() / scale;
+  let p = HEX_VIEW.to_pixel(position).as_vec2() / scale;
   let v = fbm(2, 5., 0.3, seed, p.x, p.y);
   let low = 0.55;
   let high = 1.;
@@ -495,6 +503,8 @@ struct Context {
   world: Box<World>,
   cursor_screen: IVec2,
   cursor_world: Hex,
+  counters: Counters,
+  smooth_frame_time: f32,
 }
 
 fn initialize(ctx: &mut Context) {
@@ -562,23 +572,54 @@ fn initialize(ctx: &mut Context) {
 
 fn tick_event(ctx: &mut Context) {
   // input systems
-  input_mouse_pan_system(ctx);
-  input_player_thrust_system(ctx);
+  instrument!(ctx, input_mouse_pan_system(ctx));
+  instrument!(ctx, input_player_thrust_system(ctx));
   // simulation systems
-  simulate_step_system(ctx);
+  instrument!(ctx, simulate_step_system(ctx));
   // Drawing systems
-  draw_background_hex_grid_system(ctx);
-  draw_history_trail_system(ctx);
-  draw_visible_objects_system(ctx);
-  draw_player_thrust_destination_system(ctx);
-  draw_player_to_cursor_hexes_system(ctx);
+  instrument!(ctx, draw_background_hex_grid_system(ctx));
+  instrument!(ctx, draw_history_trail_system(ctx));
+  instrument!(ctx, draw_visible_objects_system(ctx));
+  instrument!(ctx, draw_player_thrust_destination_system(ctx));
+  instrument!(ctx, draw_player_to_cursor_hexes_system(ctx));
+  // Debug systems
+  debug_fps_system(ctx);
+  debug_frame_counters_system(ctx);
+}
+
+fn debug_fps_system(ctx: &mut Context) {
+  let t = 0.01;
+  ctx.smooth_frame_time = t * get_frame_time() + (1. - t) * ctx.smooth_frame_time;
+  let fps = 1. / ctx.smooth_frame_time;
+  let text = format!("{fps:.0}fps");
+  let size = measure_text(&text, None, 30, 1.);
+  macroquad::text::draw_text(
+    &text,
+    screen_width() - size.width,
+    30.,
+    30.,
+    GREEN
+  );
+}
+
+fn debug_frame_counters_system(ctx: &mut Context) {
+  for (i, line) in ctx.counters.stats().lines().enumerate() {
+    macroquad::text::draw_text(
+      line,
+      30.,
+      30. + 30. * i as f32,
+      30.,
+      GREEN
+    );
+  }
+  ctx.counters.reset();
 }
 
 fn simulate_event(ctx: &mut Context) {
-  simulate_nav_system(ctx);
-  simulate_movement_system(ctx);
-  simulate_generate_around_player_system(ctx);
-  simulate_vision_system(ctx);
+  instrument!(ctx, simulate_nav_system(ctx));
+  instrument!(ctx, simulate_movement_system(ctx));
+  instrument!(ctx, simulate_generate_around_player_system(ctx));
+  instrument!(ctx, simulate_vision_system(ctx));
 }
 
 fn simulate_collision_event(ctx: &mut Context, a: EntityId, b: EntityId) {
@@ -627,7 +668,6 @@ fn simulate_collision_gravity(ctx: &mut Context, direction: i32, entity_id: Enti
 fn window_conf() -> Conf {
   Conf {
     window_title: "Triplanetary".to_owned(),
-    high_dpi: true,
     ..Default::default()
   }
 }
@@ -639,6 +679,8 @@ async fn main() {
     world: World::new(),
     cursor_screen: ivec2(0, 0),
     cursor_world: hex(0, 0),
+    counters: Default::default(),
+    smooth_frame_time: 0.,
   };
   initialize(&mut ctx);
   loop {
@@ -649,13 +691,6 @@ async fn main() {
     ctx.cursor_world = ctx.world.camera.world_coords(ctx.cursor_screen);
     clear_background(BLACK);
     tick_event(&mut ctx);
-    macroquad::text::draw_text(
-      &macroquad::time::get_fps().to_string(),
-      30.,
-      30.,
-      30.,
-      GREEN
-    );
     next_frame().await
   }
 }

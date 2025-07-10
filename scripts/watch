@@ -2,8 +2,13 @@
 set -euf
 source "$(dirname "$0")/config"
 
+task='./scripts/check'
+if [ "$#" -eq 1 ]; then
+  task=$1
+fi
+
 while :; do
-  output="$(./scripts/check 2>&1 || :)"
+  output="$($task 2>&1 || :)"
   clear
   echo '===================='
   echo "$output"
