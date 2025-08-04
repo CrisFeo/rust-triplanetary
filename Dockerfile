@@ -16,6 +16,9 @@ RUN apk update
 RUN apk add --no-cache \
   bash                 \
   less                 \
+  tmux                 \
+  ripgrep              \
+  kakoune              \
   openssh              \
   git                  \
   build-base           \
@@ -25,5 +28,7 @@ USER $USER
 
 RUN /usr/bin/rustup-init -y
 RUN echo '. $HOME/.cargo/env' > $HOME/.bashrc
-RUN $HOME/.cargo/bin/cargo install --no-default-features simple-http-server
+RUN echo 'export PS1="\w\n\[\e[;33m\]>\[\e[m\] "' > $HOME/.bashrc
+
 RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown
+RUN $HOME/.cargo/bin/cargo install --no-default-features simple-http-server

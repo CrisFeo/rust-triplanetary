@@ -1,4 +1,8 @@
 export PROJECT_NAME='triplanetary'
-export ADDITIONAL_DOCKER_ARGS="--publish 8000:8000"
+export ADDITIONAL_DOCKER_ARGS=" \
+  --mount type=bind,source=$HOME/.tmux.conf,target=$HOME/.tmux.conf,ro   \
+  --mount type=bind,source=$HOME/.config/kak,target=$HOME/.config/kak,ro \
+  --publish 8000:8000 \
+"
 export TARGET='wasm32-unknown-unknown'
 export CARGO_ARGS="--target=$TARGET"
